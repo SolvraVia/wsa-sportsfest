@@ -63,7 +63,7 @@ export const VALID_WSA_NAMES = [
   "Degen Daniel Laurenc", "Del Rosario Jairean Mae", "Escora Jhel Mark", "Felisilda Ejay", 
   "Galagala Ray Hycinth", "Gamos Jeahan", "Gargar Archem", "Henerol Henry James", "Labarro Sydney", 
   "Lindawan Justin", "Lopena Andrei", "Madelo Caryl Joy", "Madelo Andrei Joshua", "Mosquito Grace Anne", 
-  "Navos Sweety Gen", "Octubre Bernalyne", "Olaer Marianne", "Ortiz Ronabelle", "Paham Windy", 
+  "Navos Sweety Gen", "Octubre Bernalyn", "Olaer Marianne", "Ortiz Ronabelle", "Paham Windy", 
   "Pasquito Cecille", "Reyes Luigi Carl", "Sabana Mary Rose", "Sabay Delight Marie"
 ];
 
