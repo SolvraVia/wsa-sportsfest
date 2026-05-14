@@ -88,9 +88,9 @@ export const themeData = [
     id: 'onepiece',
     title: 'Grand Line',
     factions: [
-      { name: 'Straw Hat Fleet', style: 'Unorthodox Offense', icon: '/images/strawhat-logo.png' },
-      { name: 'Whitebeard Commanders', style: 'Absolute Power', icon: '/images/whitebeard-logo.png' },
-      { name: 'Red Hair Crew', style: 'Elite Fundamentals', icon: '/images/redhair-logo.png' }
+      { name: 'Straw Hat Fleet', style: 'Unorthodox Offense', icon: '/images/strawhat-logo.jpg' },
+      { name: 'Whitebeard Commanders', style: 'Absolute Power', icon: '/images/whitebeard-logo.jpg' },
+      { name: 'Red Hair Crew', style: 'Elite Fundamentals', icon: '/images/redhair-logo.jpg' }
     ]
   }
 ];

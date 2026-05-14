@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getAllActiveUsers, themeData, getShuffleSeed } from '../data';
+import { VALID_WSA_NAMES, getDynamicUsers, getDeletedUsers, themeData, getShuffleSeed } from '../data';
 
-// Advanced Hash Function guarantees stable assignment
-const hashString = (str) => {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = (hash * 0x01000193) >>> 0;
-  }
-  return hash;
-};
-
-export default function RosterView({ user }) {
+export default function RosterView({ user, navigateTo }) {
   const [isSorting, setIsSorting] = useState(true);
   const [roster, setRoster] = useState({ strawHat: [], whitebeard: [], redHair: [] });
   const [userFaction, setUserFaction] = useState(null);
@@ -21,42 +11,82 @@ export default function RosterView({ user }) {
   const whitebeardLogo = onepieceTheme.factions[1].icon;
   const redHairLogo = onepieceTheme.factions[2].icon;
 
+  // A sleek fallback if the image file isn't found in public/images/
+  const handleImageError = (e) => {
+    e.target.onerror = null; 
+    e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%23475569" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+    e.target.classList.add('opacity-30', 'p-2');
+  };
+
   useEffect(() => {
     if (!user) return;
 
     const sortMembers = () => {
-      const activeUsers = getAllActiveUsers();
+      const baseUsers = VALID_WSA_NAMES.filter(n => n !== "Test User");
+      const dynamicUsers = getDynamicUsers();
+      const deletedUsers = getDeletedUsers();
       const seed = getShuffleSeed();
-      
-      const strawHat = [];
-      const whitebeard = [];
-      const redHair = [];
-      let loggedInUserFaction = null;
 
-      // Assign teams mathematically based ONLY on their name and the current seed.
-      // This means adding a new person will NEVER shift existing members.
-      activeUsers.forEach((name) => {
+      // 1. HASH & SORT BASE USERS (Creates a deterministic shuffle based on the seed)
+      const hashedBase = baseUsers.map(name => {
         const saltedName = name + seed;
-        const teamIndex = hashString(saltedName) % 3;
-        
-        if (teamIndex === 0) {
-          strawHat.push(name);
-          if (name === user.name) loggedInUserFaction = { name: 'Straw Hat Fleet', colorClass: 'text-yellow-400', borderClass: 'border-yellow-400/50', bgClass: 'bg-yellow-400/5', logo: strawHatLogo };
-        } else if (teamIndex === 1) {
-          whitebeard.push(name);
-          if (name === user.name) loggedInUserFaction = { name: 'Whitebeard Commanders', colorClass: 'text-white', borderClass: 'border-white/50', bgClass: 'bg-white/5', logo: whitebeardLogo };
-        } else {
-          redHair.push(name);
-          if (name === user.name) loggedInUserFaction = { name: 'Red Hair Crew', colorClass: 'text-red-500', borderClass: 'border-red-500/50', bgClass: 'bg-red-500/5', logo: redHairLogo };
+        let hash = 0x811c9dc5;
+        for (let i = 0; i < saltedName.length; i++) {
+          hash ^= saltedName.charCodeAt(i);
+          hash = (hash * 0x01000193) >>> 0;
         }
+        return { name, hash };
+      });
+      hashedBase.sort((a, b) => a.hash - b.hash);
+
+      let sh = [];
+      let wb = [];
+      let rh = [];
+
+      // 2. DEAL BASE USERS (Guarantees PERFECT balance for the base roster)
+      hashedBase.forEach((userObj, index) => {
+        const teamIndex = index % 3;
+        if (teamIndex === 0) sh.push(userObj.name);
+        else if (teamIndex === 1) wb.push(userObj.name);
+        else rh.push(userObj.name);
       });
 
-      // Alphabetize for display
-      strawHat.sort(); 
-      whitebeard.sort(); 
-      redHair.sort();
-      
-      setRoster({ strawHat, whitebeard, redHair });
+      // 3. REMOVE DEPORTED USERS (Admin deletes)
+      sh = sh.filter(name => !deletedUsers.includes(name));
+      wb = wb.filter(name => !deletedUsers.includes(name));
+      rh = rh.filter(name => !deletedUsers.includes(name));
+
+      // 4. SMART ASSIGN NEW RECRUITS (Fills the smallest team first, ensuring stability)
+      dynamicUsers.forEach(name => {
+        if (deletedUsers.includes(name)) return; 
+
+        // Find which team is currently the smallest
+        const sizes = [
+          { id: 'sh', size: sh.length },
+          { id: 'wb', size: wb.length },
+          { id: 'rh', size: rh.length }
+        ];
+        sizes.sort((a, b) => a.size - b.size);
+        const smallest = sizes[0].id;
+
+        if (smallest === 'sh') sh.push(name);
+        else if (smallest === 'wb') wb.push(name);
+        else rh.push(name);
+      });
+
+      // 5. IDENTIFY CURRENT USER'S FACTION
+      let loggedInUserFaction = null;
+      if (sh.includes(user.name)) {
+        loggedInUserFaction = { name: 'Straw Hat Fleet', colorClass: 'text-yellow-400', borderClass: 'border-yellow-400/50', bgClass: 'bg-yellow-400/5', logo: strawHatLogo };
+      } else if (wb.includes(user.name)) {
+        loggedInUserFaction = { name: 'Whitebeard Commanders', colorClass: 'text-white', borderClass: 'border-white/50', bgClass: 'bg-white/5', logo: whitebeardLogo };
+      } else if (rh.includes(user.name)) {
+        loggedInUserFaction = { name: 'Red Hair Crew', colorClass: 'text-red-500', borderClass: 'border-red-500/50', bgClass: 'bg-red-500/5', logo: redHairLogo };
+      }
+
+      // 6. ALPHABETIZE AND RENDER
+      sh.sort(); wb.sort(); rh.sort();
+      setRoster({ strawHat: sh, whitebeard: wb, redHair: rh });
       setUserFaction(loggedInUserFaction);
     };
 
@@ -82,11 +112,12 @@ export default function RosterView({ user }) {
               <div className="absolute inset-0 border-2 border-dashed border-slate-700 rounded-full animate-[spin_8s_linear_infinite]"></div>
               <div className="absolute inset-2 border-2 border-blue-500/30 rounded-full border-t-blue-500 animate-[spin_2s_linear_reverse_infinite]"></div>
             </div>
-            <p className="text-blue-400 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] animate-pulse">Running Assignment Protocol...</p>
+            <p className="text-blue-400 font-mono text-[10px] md:text-xs uppercase tracking-[0.4em] animate-pulse">Balancing Network Operations...</p>
           </div>
         ) : (
           <div className="flex-1 flex flex-col w-full h-full animate-in fade-in duration-1000 zoom-in-[0.98]">
             
+            {/* USER'S PERSONAL FACTION ID BANNER */}
             {userFaction && (
               <div className={`w-full max-w-4xl mx-auto mb-10 border rounded-3xl backdrop-blur-2xl relative overflow-hidden p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl ${userFaction.borderClass} ${userFaction.bgClass}`}>
                 
@@ -106,8 +137,8 @@ export default function RosterView({ user }) {
                   <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 bg-black/50 rounded-full border border-white/10 flex items-center justify-center p-2 overflow-hidden shadow-inner">
                     <img 
                       src={userFaction.logo} 
-                      alt=""
-                      onError={(e) => e.target.style.display = 'none'} 
+                      alt="Faction Logo"
+                      onError={handleImageError} 
                       className="w-full h-full object-contain"
                     />
                   </div>
@@ -115,8 +146,10 @@ export default function RosterView({ user }) {
               </div>
             )}
 
+            {/* THREE COLUMNS */}
             <div className="flex flex-col xl:flex-row gap-6 w-full flex-1 min-h-[60vh]">
               
+              {/* STRAW HAT FLEET */}
               <div className="flex flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl w-full xl:w-1/3 relative overflow-hidden h-[60vh] xl:h-auto shadow-2xl transition-transform hover:-translate-y-1">
                 <div className="bg-gradient-to-b from-yellow-500/20 to-transparent p-5 md:p-6 border-b border-white/5 flex justify-between items-start relative z-10">
                   <div className="flex-1 overflow-hidden pr-2">
@@ -127,8 +160,8 @@ export default function RosterView({ user }) {
                       {roster.strawHat.length} Members
                     </p>
                   </div>
-                  <div className="w-10 h-10 shrink-0 opacity-80 flex items-center justify-center bg-black/20 rounded-full border border-white/5">
-                    <img src={strawHatLogo} alt="" onError={(e) => e.target.style.display='none'} className="w-6 h-6 object-contain" />
+                  <div className="w-10 h-10 shrink-0 opacity-80 flex items-center justify-center bg-black/20 rounded-full border border-white/5 overflow-hidden">
+                    <img src={strawHatLogo} alt="Logo" onError={handleImageError} className="w-full h-full object-contain" />
                   </div>
                 </div>
                 
@@ -144,6 +177,7 @@ export default function RosterView({ user }) {
                 </div>
               </div>
 
+              {/* WHITEBEARD COMMANDERS */}
               <div className="flex flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl w-full xl:w-1/3 relative overflow-hidden h-[60vh] xl:h-auto shadow-2xl transition-transform hover:-translate-y-1">
                 <div className="bg-gradient-to-b from-white/20 to-transparent p-5 md:p-6 border-b border-white/5 flex justify-between items-start relative z-10">
                   <div className="flex-1 overflow-hidden pr-2">
@@ -154,8 +188,8 @@ export default function RosterView({ user }) {
                       {roster.whitebeard.length} Members
                     </p>
                   </div>
-                  <div className="w-10 h-10 shrink-0 opacity-80 flex items-center justify-center bg-black/20 rounded-full border border-white/5">
-                    <img src={whitebeardLogo} alt="" onError={(e) => e.target.style.display='none'} className="w-6 h-6 object-contain" />
+                  <div className="w-10 h-10 shrink-0 opacity-80 flex items-center justify-center bg-black/20 rounded-full border border-white/5 overflow-hidden">
+                    <img src={whitebeardLogo} alt="Logo" onError={handleImageError} className="w-full h-full object-contain" />
                   </div>
                 </div>
 
@@ -171,6 +205,7 @@ export default function RosterView({ user }) {
                 </div>
               </div>
 
+              {/* RED HAIR CREW */}
               <div className="flex flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl w-full xl:w-1/3 relative overflow-hidden h-[60vh] xl:h-auto shadow-2xl transition-transform hover:-translate-y-1">
                 <div className="bg-gradient-to-b from-red-500/20 to-transparent p-5 md:p-6 border-b border-white/5 flex justify-between items-start relative z-10">
                   <div className="flex-1 overflow-hidden pr-2">
@@ -181,8 +216,8 @@ export default function RosterView({ user }) {
                       {roster.redHair.length} Members
                     </p>
                   </div>
-                  <div className="w-10 h-10 shrink-0 opacity-80 flex items-center justify-center bg-black/20 rounded-full border border-white/5">
-                    <img src={redHairLogo} alt="" onError={(e) => e.target.style.display='none'} className="w-6 h-6 object-contain" />
+                  <div className="w-10 h-10 shrink-0 opacity-80 flex items-center justify-center bg-black/20 rounded-full border border-white/5 overflow-hidden">
+                    <img src={redHairLogo} alt="Logo" onError={handleImageError} className="w-full h-full object-contain" />
                   </div>
                 </div>
 
