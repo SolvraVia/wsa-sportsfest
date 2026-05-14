@@ -1,50 +1,87 @@
 import React, { useState } from 'react';
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../Firebase";
-import { VALID_WSA_NAMES } from "../data";
+import { VALID_WSA_NAMES, getDynamicUsers } from "../data";
 
-export default function LoginView({ isVotingOpen, navigateTo, setUser }) {
+export default function LoginView({ navigateTo, setUser }) {
   const [nameInput, setNameInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!isVotingOpen || isAuthenticating) return; 
+    if (isAuthenticating) return; 
+    
     const enteredName = nameInput.trim();
     if (enteredName.length < 2) return setLoginError("Please enter your full name.");
-    if (!VALID_WSA_NAMES.some((name) => name.toLowerCase() === enteredName.toLowerCase())) return setLoginError("ACCESS DENIED: Unrecognized Member.");
+
+    const allValidNames = [...VALID_WSA_NAMES, ...getDynamicUsers()];
+
+    if (!allValidNames.some((name) => name.toLowerCase() === enteredName.toLowerCase())) {
+      return setLoginError("ACCESS DENIED: Unrecognized Data Signature.");
+    }
     
     setIsAuthenticating(true); setLoginError('');
-    try {
-      const exactName = VALID_WSA_NAMES.find((name) => name.toLowerCase() === enteredName.toLowerCase());
-      const docSnap = await getDoc(doc(db, "wsa_votes", exactName));
-      const newUser = { name: exactName, votedRealm: docSnap.exists() ? docSnap.data().realmId : null };
-      setUser(newUser); localStorage.setItem('wsaVoter', JSON.stringify(newUser)); navigateTo('voting'); 
-    } catch (error) { setLoginError("SYSTEM ERROR."); } finally { setIsAuthenticating(false); }
+    
+    setTimeout(() => {
+      const exactName = allValidNames.find((name) => name.toLowerCase() === enteredName.toLowerCase());
+      const newUser = { name: exactName };
+      setUser(newUser); 
+      localStorage.setItem('wsaVoter', JSON.stringify(newUser)); 
+      
+      if (exactName === 'Test User') {
+        navigateTo('admin');
+      } else {
+        navigateTo('roster'); 
+      }
+      setIsAuthenticating(false);
+    }, 800);
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border-y-2 border-slate-700 p-8 md:p-10 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
-        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-blue-500/50"></div><div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-blue-500/50"></div><div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-blue-500/50"></div><div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-blue-500/50"></div>
-        <button onClick={() => navigateTo('')} disabled={isAuthenticating} className={`absolute -top-12 left-0 text-slate-400 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${isAuthenticating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}><span>←</span> Abort Sequence</button>
-        <div className="text-center mt-2 mb-10 relative">
-          <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Terminal Access</h2>
-          <p className="text-slate-400 text-[10px] md:text-xs uppercase tracking-widest">Identity Verification</p>
-          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-blue-500/50 blur-sm rounded-full"></div>
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-[#030712]/80 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl relative">
+        
+        <button onClick={() => navigateTo('')} disabled={isAuthenticating} className="absolute top-6 left-6 text-slate-400 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-2">
+          <span>←</span> Cancel
+        </button>
+        
+        <div className="text-center mt-6 mb-10">
+          {/* REPLACED THE BLUE GLOW WITH THE OFFICIAL WSA LOGO */}
+          <div className="w-20 h-20 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6 p-3 shadow-lg">
+            <img src="/images/wsa-logo.jpg" alt="WSA Logo" className="w-full h-full object-contain mix-blend-screen" />
+          </div>
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Secure Link</h2>
+          <p className="text-slate-400 text-[10px] uppercase tracking-widest font-mono">Identity Verification</p>
         </div>
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <div className="flex items-baseline justify-between mb-2 pl-1 pr-1"><label className="block text-xs font-bold uppercase tracking-widest text-slate-300">Target Identity</label><span className="text-[9px] font-bold text-blue-400/80 uppercase tracking-widest font-mono">Format: (Surname) (Given Name)</span></div>
-            <div className="relative group">
-              <input type="text" placeholder="Ex: Dela Cruz Juan" value={nameInput} onChange={(e) => setNameInput(e.target.value)} disabled={isAuthenticating} className={`w-full bg-slate-950/50 border border-slate-700 rounded-none px-4 py-4 text-white text-sm focus:outline-none focus:border-blue-500 transition-all duration-500 uppercase tracking-wider ${isAuthenticating ? 'opacity-50 cursor-not-allowed' : ''}`} />
-              <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-blue-500 group-focus-within:w-full transition-all duration-500 ease-out"></div>
+            <div className="flex items-baseline justify-between mb-3 px-1">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Target Identity</label>
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest font-mono">Format: (Surname) (Given)</span>
             </div>
+            <input 
+              type="text" 
+              placeholder="Ex: Dela Cruz Juan" 
+              value={nameInput} 
+              onChange={(e) => setNameInput(e.target.value)} 
+              disabled={isAuthenticating} 
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors uppercase tracking-wider placeholder-slate-600"
+            />
           </div>
-          {loginError && (<div className="bg-red-950/50 border-l-4 border-red-500 py-3 px-4 flex items-start gap-3"><span className="text-red-500 text-sm mt-0.5">⚠</span><p className="text-red-400 text-[10px] uppercase tracking-widest font-bold font-mono leading-relaxed">{loginError}</p></div>)}
-          <button type="submit" disabled={isAuthenticating} className={`w-full text-white font-black uppercase tracking-[0.2em] py-5 shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300 border border-blue-400/50 flex items-center justify-center gap-3 ${isAuthenticating ? 'bg-slate-800 text-slate-400 cursor-not-allowed border-slate-600' : 'bg-blue-600 hover:bg-blue-500 active:scale-[0.98] cursor-pointer'}`}>
-            {isAuthenticating ? (<><div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>Verifying Database...</>) : ("Initiate Handshake")}
+
+          {loginError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl py-3 px-4 flex items-center gap-3">
+              <span className="text-red-400 text-sm">⚠</span>
+              <p className="text-red-300 text-[9px] uppercase tracking-widest font-bold font-mono">{loginError}</p>
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={isAuthenticating} 
+            className="w-full text-white font-black uppercase tracking-[0.2em] text-xs py-4 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all bg-blue-600 hover:bg-blue-500 flex items-center justify-center gap-3"
+          >
+            {isAuthenticating ? (<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>) : ("Authenticate")}
           </button>
         </form>
       </div>
