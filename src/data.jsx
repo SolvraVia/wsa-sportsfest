@@ -7,12 +7,24 @@ export const getDynamicUsers = () => {
   return stored ? JSON.parse(stored) : [];
 };
 
-// NEW: Global Shuffle Seed Managers
+export const getDeletedUsers = () => {
+  const stored = localStorage.getItem('wsaDeletedUsers');
+  return stored ? JSON.parse(stored) : [];
+};
+
 export const getShuffleSeed = () => {
   return localStorage.getItem('wsaShuffleSeed') || 'grandline_default_seed';
 };
+
 export const setShuffleSeed = (newSeed) => {
   localStorage.setItem('wsaShuffleSeed', newSeed);
+};
+
+// NEW: Combines base + dynamic and filters out deleted
+export const getAllActiveUsers = () => {
+  const all = [...VALID_WSA_NAMES, ...getDynamicUsers()];
+  const deleted = getDeletedUsers();
+  return all.filter(name => !deleted.includes(name) && name !== "Test User");
 };
 
 export const VALID_WSA_NAMES = [
@@ -76,9 +88,9 @@ export const themeData = [
     id: 'onepiece',
     title: 'Grand Line',
     factions: [
-      { name: 'Straw Hat Fleet', style: 'Unorthodox Offense', icon: '/images/strawhat-logo.jpg' },
-      { name: 'Whitebeard Commanders', style: 'Absolute Power', icon: '/images/whitebeard-logo.jpg' },
-      { name: 'Red Hair Crew', style: 'Elite Fundamentals', icon: '/images/redhair-logo.jpg' }
+      { name: 'Straw Hat Fleet', style: 'Unorthodox Offense', icon: '/images/strawhat-logo.png' },
+      { name: 'Whitebeard Commanders', style: 'Absolute Power', icon: '/images/whitebeard-logo.png' },
+      { name: 'Red Hair Crew', style: 'Elite Fundamentals', icon: '/images/redhair-logo.png' }
     ]
   }
 ];

@@ -9,10 +9,13 @@ export default function App() {
   const [deviceType, setDeviceType] = useState('DESKTOP');
   const [currentPath, setCurrentPath] = useState(window.location.hash.replace('#', ''));
   const [user, setUser] = useState(null);
+  const [isAuthReady, setIsAuthReady] = useState(false); // NEW: Session Loading State
 
   useEffect(() => {
+    // Check local storage FIRST, then mark auth as ready
     const savedUser = localStorage.getItem('wsaVoter');
     if (savedUser) setUser(JSON.parse(savedUser));
+    setIsAuthReady(true); 
 
     const checkDevice = () => setDeviceType(window.innerWidth < 768 ? 'MOBILE' : 'DESKTOP');
     checkDevice();
@@ -33,24 +36,25 @@ export default function App() {
 
   const navigateTo = (hash) => { window.location.hash = hash; };
 
-  // ROUTE PROTECTION
+  // ROUTE PROTECTION: Only kicks you out IF auth has finished loading and you are still null
   useEffect(() => {
-    if ((currentView === 'roster' || currentView === 'admin') && !user) {
+    if (isAuthReady && (currentView === 'roster' || currentView === 'admin') && !user) {
       navigateTo('login');
     }
-  }, [currentView, user]);
+  }, [currentView, user, isAuthReady]);
 
   const handleLogout = () => {
     setUser(null); localStorage.removeItem('wsaVoter'); navigateTo('');
   };
 
+  // Prevent flashing white screen while checking session
+  if (!isAuthReady) return <div className="bg-[#030712] min-h-screen"></div>;
+
   return (
     <div className="bg-[#030712] text-slate-50 font-sans selection:bg-blue-500/30 min-h-screen relative animate-in fade-in duration-700 ease-in-out overflow-x-hidden">
       
-      {/* Sleek Ambient Backgrounds */}
       <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_top_center,rgba(56,189,248,0.05)_0%,rgba(3,7,18,1)_60%)]"></div>
       
-      {/* High-End Glass Navbar */}
       <div className="fixed top-4 inset-x-4 md:inset-x-10 z-50 flex justify-between items-center px-6 py-4 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl transition-all duration-700">
         <div className="flex flex-col">
           <span className="text-xs md:text-sm font-black tracking-widest uppercase text-white drop-shadow-md">
@@ -79,7 +83,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Dynamic Views */}
       <div className="pt-24 min-h-screen">
         {currentView === 'home' && <HomeView navigateTo={navigateTo} />}
         {currentView === 'login' && <LoginView navigateTo={navigateTo} setUser={setUser} />}

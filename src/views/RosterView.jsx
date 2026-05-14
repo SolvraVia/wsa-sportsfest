@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { VALID_WSA_NAMES, getDynamicUsers, themeData, getShuffleSeed } from '../data';
+import { getAllActiveUsers, themeData, getShuffleSeed } from '../data';
 
-export default function RosterView({ user, navigateTo }) {
+// Advanced Hash Function guarantees stable assignment
+const hashString = (str) => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 0x01000193) >>> 0;
+  }
+  return hash;
+};
+
+export default function RosterView({ user }) {
   const [isSorting, setIsSorting] = useState(true);
   const [roster, setRoster] = useState({ strawHat: [], whitebeard: [], redHair: [] });
   const [userFaction, setUserFaction] = useState(null);
@@ -15,29 +25,19 @@ export default function RosterView({ user, navigateTo }) {
     if (!user) return;
 
     const sortMembers = () => {
-      const allUsers = [...VALID_WSA_NAMES, ...getDynamicUsers()].filter(n => n !== "Test User");
-      
+      const activeUsers = getAllActiveUsers();
       const seed = getShuffleSeed();
       
-      const hashedUsers = allUsers.map(name => {
-        const saltedName = name + seed;
-        let hash = 0;
-        for (let i = 0; i < saltedName.length; i++) {
-          hash = Math.imul(31, hash) + saltedName.charCodeAt(i) | 0;
-        }
-        return { name, hash };
-      });
-
-      hashedUsers.sort((a, b) => a.hash - b.hash);
-
       const strawHat = [];
       const whitebeard = [];
       const redHair = [];
       let loggedInUserFaction = null;
 
-      hashedUsers.forEach((userObj, index) => {
-        const name = userObj.name;
-        const teamIndex = index % 3;
+      // Assign teams mathematically based ONLY on their name and the current seed.
+      // This means adding a new person will NEVER shift existing members.
+      activeUsers.forEach((name) => {
+        const saltedName = name + seed;
+        const teamIndex = hashString(saltedName) % 3;
         
         if (teamIndex === 0) {
           strawHat.push(name);
@@ -51,6 +51,7 @@ export default function RosterView({ user, navigateTo }) {
         }
       });
 
+      // Alphabetize for display
       strawHat.sort(); 
       whitebeard.sort(); 
       redHair.sort();
@@ -69,7 +70,6 @@ export default function RosterView({ user, navigateTo }) {
     <div className="min-h-screen w-full flex flex-col pt-10 pb-20 px-4 md:px-8 relative z-10">
       
       <div className="w-full text-center z-40 relative flex-shrink-0 mb-10">
-         {/* UPDATED: Applied font-onepiece, bumped size to 4xl/6xl, and widened tracking */}
          <h2 className="text-4xl md:text-6xl font-onepiece text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 uppercase tracking-wider drop-shadow-xl">
            Global Operations Roster
          </h2>
@@ -87,13 +87,11 @@ export default function RosterView({ user, navigateTo }) {
         ) : (
           <div className="flex-1 flex flex-col w-full h-full animate-in fade-in duration-1000 zoom-in-[0.98]">
             
-            {/* USER'S PERSONAL FACTION ID BANNER */}
             {userFaction && (
               <div className={`w-full max-w-4xl mx-auto mb-10 border rounded-3xl backdrop-blur-2xl relative overflow-hidden p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl ${userFaction.borderClass} ${userFaction.bgClass}`}>
                 
                 <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left">
                   <p className="text-[10px] text-slate-400 font-mono tracking-[0.3em] uppercase mb-1">Identity Signature Confirmed</p>
-                  {/* UPDATED: Applied font-onepiece, bumped size to 3xl/5xl, added drop shadow */}
                   <h3 className="text-3xl md:text-5xl font-onepiece text-white uppercase tracking-wider drop-shadow-md">{user.name}</h3>
                 </div>
 
@@ -117,10 +115,8 @@ export default function RosterView({ user, navigateTo }) {
               </div>
             )}
 
-            {/* THREE COLUMNS */}
             <div className="flex flex-col xl:flex-row gap-6 w-full flex-1 min-h-[60vh]">
               
-              {/* STRAW HAT FLEET */}
               <div className="flex flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl w-full xl:w-1/3 relative overflow-hidden h-[60vh] xl:h-auto shadow-2xl transition-transform hover:-translate-y-1">
                 <div className="bg-gradient-to-b from-yellow-500/20 to-transparent p-5 md:p-6 border-b border-white/5 flex justify-between items-start relative z-10">
                   <div className="flex-1 overflow-hidden pr-2">
@@ -148,7 +144,6 @@ export default function RosterView({ user, navigateTo }) {
                 </div>
               </div>
 
-              {/* WHITEBEARD COMMANDERS */}
               <div className="flex flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl w-full xl:w-1/3 relative overflow-hidden h-[60vh] xl:h-auto shadow-2xl transition-transform hover:-translate-y-1">
                 <div className="bg-gradient-to-b from-white/20 to-transparent p-5 md:p-6 border-b border-white/5 flex justify-between items-start relative z-10">
                   <div className="flex-1 overflow-hidden pr-2">
@@ -176,7 +171,6 @@ export default function RosterView({ user, navigateTo }) {
                 </div>
               </div>
 
-              {/* RED HAIR CREW */}
               <div className="flex flex-col bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl w-full xl:w-1/3 relative overflow-hidden h-[60vh] xl:h-auto shadow-2xl transition-transform hover:-translate-y-1">
                 <div className="bg-gradient-to-b from-red-500/20 to-transparent p-5 md:p-6 border-b border-white/5 flex justify-between items-start relative z-10">
                   <div className="flex-1 overflow-hidden pr-2">
@@ -210,15 +204,8 @@ export default function RosterView({ user, navigateTo }) {
       </div>
 
       <style>{`
-        /* 1. Pull the official Pirate Font directly from Google's servers */
         @import url('https://fonts.googleapis.com/css2?family=Pirata+One&display=swap');
-
-        /* 2. Apply it to our custom class */
-        .font-onepiece {
-          font-family: 'Pirata One', cursive !important;
-        }
-
-        /* Scrollbar styles */
+        .font-onepiece { font-family: 'Pirata One', cursive !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
