@@ -2,31 +2,6 @@ import React from 'react';
 
 export const VOTING_DEADLINE = new Date("2026-04-24T23:59:59").getTime(); 
 
-export const getDynamicUsers = () => {
-  const stored = localStorage.getItem('wsaDynamicUsers');
-  return stored ? JSON.parse(stored) : [];
-};
-
-export const getDeletedUsers = () => {
-  const stored = localStorage.getItem('wsaDeletedUsers');
-  return stored ? JSON.parse(stored) : [];
-};
-
-export const getShuffleSeed = () => {
-  return localStorage.getItem('wsaShuffleSeed') || 'grandline_default_seed';
-};
-
-export const setShuffleSeed = (newSeed) => {
-  localStorage.setItem('wsaShuffleSeed', newSeed);
-};
-
-// NEW: Combines base + dynamic and filters out deleted
-export const getAllActiveUsers = () => {
-  const all = [...VALID_WSA_NAMES, ...getDynamicUsers()];
-  const deleted = getDeletedUsers();
-  return all.filter(name => !deleted.includes(name) && name !== "Test User");
-};
-
 export const VALID_WSA_NAMES = [
   "Test User", 
   "Acao Wpabbd", "Acub Krisyen", "Agcito Connery", "Aguada Ralph", "Albenda Blence Karylle", 
